@@ -4,9 +4,6 @@ const connection = require('./db/connection');
 const mysql = require('mysql2');
 const cTable = require('console.table');
 
-.
-
-
 const runSearch = () => {
   inquirer.prompt({
     name: 'action',
@@ -138,7 +135,7 @@ const viewAllEmployeesByDepartment = async () => {
 
 
 // Function to retrieve a list of managers
-// Function to retrieve a list of managers
+
 const getManagers = () => {
   return new Promise((resolve, reject) => {
     const query = 'SELECT id, first_name, last_name FROM employee_info WHERE manager_id IS NULL';
@@ -238,7 +235,7 @@ const mainMenu = async () => {
 };
 
 // Function to fetch job roles from the database
-// Get job roles from the database
+
 const getJobRoles = () => {
   return new Promise((resolve, reject) => {
     const query = 'SELECT id, title FROM job_role';
@@ -255,7 +252,7 @@ const getJobRoles = () => {
 };
 
 // Function to add an employee
-// Add Employee
+
 const addEmployee = async () => {
   try {
     // Prompt for employee details
@@ -353,7 +350,6 @@ const removeEmployee = () => {
 
 
 const updateEmployeeRole = () => {
-  // First, query the database for all employees and job roles
   const sql = `
     SELECT employee_info.id, CONCAT(employee_info.first_name, ' ', employee_info.last_name) AS employee_name, job_role.id AS job_role_id, job_role.title AS role_title
     FROM employee_info
@@ -503,9 +499,7 @@ const getDepartmentsFromDB = () => {
 };
 
 // Insert a new job role into the job_role table
-// ...
 
-// Insert a new job role into the job_role table
 const insertJobRole = (roleData) => {
   return new Promise((resolve, reject) => {
     const query = 'INSERT INTO job_role SET ?';
@@ -551,9 +545,6 @@ const removeRole = async () => {
   }
 };
 
-
-
-
 const viewAllDepartments = () => {
   connection.query(
     `SELECT id AS "Department ID", name AS "Department Name" FROM department`,
@@ -588,7 +579,6 @@ const addDepartment = () => {
   });
 };
 
-
 const removeDepartment = async () => {
   try {
     const departmentChoices = await getDepartments();
@@ -611,8 +601,6 @@ const removeDepartment = async () => {
     runSearch();
   }
 };
-
-
 
 const endConnection = () => {
   connection.end(err => {
