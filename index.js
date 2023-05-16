@@ -186,7 +186,7 @@ const addEmployee = async () => {
 
 const updateEmployeeRole = () => {
   // First, query the database for all employees and job roles
-  const sql = `SELECT employee.id, CONCAT(employee.first_name, ' ', employee.last_name) AS employee_name, role.id AS role_id, role.title AS role_title FROM employee INNER JOIN role ON employee.role_id = role.id`;
+  const sql = `SELECT employee_info.id, CONCAT(employee.first_name, ' ', employee_info.last_name) AS employee_name, job_role.id AS job_role_id, job_role.title AS role_title FROM employee_info INNER JOIN job_role ON employee_info.job_role_id = job_role.id`;
 
   connection.query(sql, (err, res) => {
     if (err) throw err;
@@ -208,7 +208,7 @@ const updateEmployeeRole = () => {
     ])
     .then(answer => {
       // Update the employee's job role in the database
-      const sql = `UPDATE employee SET role_id = ? WHERE id = ?`;
+      const sql = `UPDATE employee_info SET role_id = ? WHERE id = ?`;
 
       connection.query(sql, [answer.role, answer.employee], (err, res) => {
         if (err) throw err;
@@ -263,7 +263,7 @@ const updateEmployeeManager = async () => {
 
 const viewAllRoles = () => {
   connection.query(
-    `SELECT job_role.id, role.title, department.name AS department, job_role.salary 
+    `SELECT job_role.id, job_role.title, department.name AS department, job_role.salary 
     FROM job_role 
     LEFT JOIN department ON job_role.department_id = department.id 
     ORDER BY job_role.id`,
