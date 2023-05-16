@@ -67,6 +67,7 @@ To run this application:
 7. Complete all prompts
 ```
 ## Video Demo
+[Video Demo](https://drive.google.com/file/d/1KfxCG9kMEyIoWw-pZq5Tm0AlgreBuV55/view)
 
 ## Git Hub
 [employee-tracker](https://github.com/JasonDeLine/employee-tracker)
