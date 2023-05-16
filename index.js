@@ -4,7 +4,9 @@ const Employee = require('./lib/employee')
 
 const inquirer = require('inquirer');
 const connection = require('./db/connection');
+const mysql = require('mysql2');
 const cTable = require('console.table');
+
 
 
 const runSearch = () => {
@@ -95,91 +97,213 @@ const viewAllEmployees = () => {
   });
 };
 
-const viewAllEmployeesByDepartment = () => {
-  inquirer
-    .prompt({
+const getDepartments = () => {
+  return new Promise((resolve, reject) => {
+    connection.promise().query('SELECT * FROM department')
+      .then(([rows, fields]) => {
+        const departmentChoices = rows.map(department => ({
+          name: department.name,
+          value: department.id
+        }));
+        resolve(departmentChoices);
+      })
+      .catch(reject);
+  });
+};
+
+const viewAllEmployeesByDepartment = async () => {
+  try {
+    const departmentChoices = await getDepartments();
+
+    const answer = await inquirer.prompt({
       name: "department",
       type: "list",
       message: "Which department would you like to view?",
-      choices: getDepartments(), // assuming this function is defined elsewhere
-    })
-    .then((answer) => {
-      const query = `
-        SELECT ei.id, ei.first_name, ei.last_name, jr.title, d.name AS department, jr.income, CONCAT(eim.first_name, ' ', eim.last_name) AS manager
-        FROM employee_info ei
-        LEFT JOIN job_role jr ON ei.position_id = jr.id
-        LEFT JOIN department d ON jr.department_id = d.id
-        LEFT JOIN employee_info eim ON eim.id = ei.manager_id
-        WHERE d.name = ?`;
-      connection.query(query, [answer.department], (err, res) => {
-        if (err) throw err;
-        console.table(res);
-        runSearch();
+      choices: departmentChoices,
+    });
+
+    const query = `
+      SELECT ei.id, ei.first_name, ei.last_name, jr.title, d.name AS department, jr.income, CONCAT(eim.first_name, ' ', eim.last_name) AS manager
+      FROM employee_info ei
+      LEFT JOIN job_role jr ON ei.position_id = jr.id
+      LEFT JOIN department d ON jr.department_id = d.id
+      LEFT JOIN employee_info eim ON eim.id = ei.manager_id
+      WHERE d.id = ?`; // Use "d.id" instead of "d.name"
+
+    const [rows, fields] = await connection.promise().query(query, [answer.department]);
+    console.table(rows);
+
+    runSearch();
+  } catch (error) {
+    console.log(`Error: ${error.message}`);
+    runSearch();
+  }
+};
+
+
+// Function to retrieve a list of managers
+// Function to retrieve a list of managers
+const getManagers = () => {
+  return new Promise((resolve, reject) => {
+    const query = 'SELECT id, first_name, last_name FROM employee_info WHERE manager_id IS NULL';
+
+    connection.query(query, (error, results) => {
+      if (error) {
+        reject(error);
+      } else {
+        const managers = results.map((row) => ({
+          name: `${row.first_name} ${row.last_name}`,
+          value: row.id,
+        }));
+        resolve(managers);
+      }
+    });
+  });
+};
+
+// Function to view all employees by manager
+const viewAllEmployeesByManager = async () => {
+  try {
+    const managerChoices = await getManagers();
+
+    const answer = await inquirer.prompt({
+      name: "manager",
+      type: "list",
+      message: "Which manager would you like to view?",
+      choices: managerChoices,
+    });
+
+    const query = `
+      SELECT ei.id, ei.first_name, ei.last_name, jr.title, d.name AS department, jr.income, CONCAT(eim.first_name, ' ', eim.last_name) AS manager
+      FROM employee_info ei
+      LEFT JOIN job_role jr ON ei.position_id = jr.id
+      LEFT JOIN department d ON jr.department_id = d.id
+      LEFT JOIN employee_info eim ON eim.id = ei.manager_id
+      WHERE CONCAT(eim.first_name, ' ', eim.last_name) = ?`;
+
+    const [rows, fields] = await connection.promise().query(query, [answer.manager]);
+    console.table(rows);
+
+    runSearch();
+  } catch (error) {
+    console.log(`Error: ${error.message}`);
+    runSearch();
+  }
+};
+
+
+
+
+// Function to validate if an input is provided
+const validateRequiredInput = (input) => {
+  if (input.trim() === "") {
+    return "This input is required. Please enter a value.";
+  }
+  return true;
+};
+
+// Function to display the main menu
+const mainMenu = async () => {
+  try {
+    const answer = await inquirer.prompt({
+      name: "action",
+      type: "list",
+      message: "What would you like to do?",
+      choices: [
+        "View all employees",
+        "View all employees by department",
+        "View all employees by manager",
+        "Add employee",
+        "Exit",
+      ],
+    });
+
+    switch (answer.action) {
+      case "View all employees":
+        viewAllEmployees();
+        break;
+      case "View all employees by department":
+        viewAllEmployeesByDepartment();
+        break;
+      case "View all employees by manager":
+        viewAllEmployeesByManager();
+        break;
+      case "Add employee":
+        addEmployee();
+        break;
+      case "Exit":
+        connection.end();
+        process.exit();
+    }
+  } catch (error) {
+    console.log(`Error: ${error.message}`);
+    mainMenu();
+  }
+};
+
+// Function to fetch job roles from the database
+// Get job roles from the database
+const getJobRoles = () => {
+  return new Promise((resolve, reject) => {
+    const query = 'SELECT id, title FROM job_role';
+
+    connection.query(query, (error, results) => {
+      if (error) {
+        reject(error);
+      } else {
+        const jobRoles = results.map((row) => ({ name: row.title, value: row.id }));
+        resolve(jobRoles);
+      }
+    });
+  });
+};
+
+// Function to add an employee
+// Add Employee
+const addEmployee = () => {
+  // Prompt for employee details
+  inquirer
+    .prompt([
+      {
+        type: 'input',
+        name: 'firstName',
+        message: "Enter the employee's first name:",
+      },
+      {
+        type: 'input',
+        name: 'lastName',
+        message: "Enter the employee's last name:",
+      },
+      {
+        type: 'list',
+        name: 'jobRoleId',
+        message: 'Select the employee job role:',
+        choices: getJobRoles(),
+      },
+      {
+        type: 'list',
+        name: 'managerId',
+        message: 'Select the employee manager:',
+        choices: getManagers(),
+      },
+    ])
+    .then((answers) => {
+      // Add employee to the database
+      const { firstName, lastName, jobRoleId, managerId } = answers;
+      const query = 'INSERT INTO employee_info (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)';
+      const values = [firstName, lastName, jobRoleId, managerId];
+
+      connection.query(query, values, (error) => {
+        if (error) {
+          throw new Error(`Failed to add employee: ${error.message}`);
+        }
+        console.log('Employee added successfully!');
+        mainMenu();
       });
     });
 };
 
 
-const viewAllEmployeesByManager = async () => {
-  try {
-    const managerChoices = await getManagers();
-    const managerAnswer = await inquirer.prompt({
-      name: 'managerId',
-      type: 'list',
-      message: 'Which manager would you like to see direct reports for?',
-      choices: managerChoices,
-    });
-    const employees = await connection.findAllEmployeesByManager(managerAnswer.managerId);
-    console.table(employees);
-    runSearch();
-  } catch (err) {
-    console.log(err);
-  }
-};
-
-const addEmployee = async () => {
-    try {
-        // Prompt user for employee details
-        const employee = await inquirer.prompt([
-            {
-                name: 'first_name',
-                type: 'input',
-                message: 'What is the employee\'s first name?',
-                validate: validateRequiredInput,
-            },
-            {
-                name: 'last_name',
-                type: 'input',
-                message: 'What is the employee\'s last name?',
-                validate: validateRequiredInput,
-            },
-            {
-                name: 'role_id',
-                type: 'list',
-                message: 'What is the employee\'s job role?',
-                choices: await getRoles(),
-            },
-            {
-                name: 'manager_id',
-                type: 'list',
-                message: 'Who is the employee\'s manager?',
-                choices: await getManagers(),
-            },
-        ]);
-
-        // Insert new employee record into database
-        const [rows, fields] = await connection.query(
-            'INSERT INTO employee_info (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)',
-            [employee.first_name, employee.last_name, employee.role_id, employee.manager_id]
-        );
-        
-        console.log(`\n${rows.affectedRows} employee added to the database!\n`);
-        return mainMenu();
-    } catch (error) {
-        console.log(`Error: ${error}`);
-        return mainMenu();
-    }
-};
 
 
 
